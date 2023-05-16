@@ -23,7 +23,7 @@ GPIO.setup(17, GPIO.OUT)
 GPIO.setup(18, GPIO.IN)
 GPIO.setup(26, GPIO.OUT)
 GPIO.setup(16, GPIO.IN)
-
+GPIO.setup(12, GPIO.IN)
 GPIO.setup(17, 0)
 
 
