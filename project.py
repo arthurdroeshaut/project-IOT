@@ -20,7 +20,7 @@ from adafruit_bus_device.spi_device import SPIDevice
 # PIN 26 = wit
 # PIN 16 = paars
 
-#ubeac variabelen
+#ubeac variabelen dit zijn mijn ubeac gegevens
 url = "http://arthurdroeshaut.hub.ubeac.io/iotessarthurdroeshaut"
 uid = "iotessarthur droeshaut"
 
@@ -28,11 +28,11 @@ uid = "iotessarthur droeshaut"
 
 GPIO.setmode(GPIO.BCM)
 
+# de pinnen die gebruikt worden en de manier waarop deze gebruikt worden met als voorbeeld de knoppen staan op 12 en 16.
 GPIO.setup(22,GPIO.OUT) #geel
 GPIO.setup(27,GPIO.OUT) #zwart
 GPIO.setup(25,GPIO.OUT) #groen
 GPIO.setup(5,GPIO.OUT) #oranje
-#to use raspberry pi GPIO numbers
 GPIO.setup(17, GPIO.OUT)
 GPIO.setup(18, GPIO.IN)
 GPIO.setup(26, GPIO.OUT)
@@ -41,7 +41,7 @@ GPIO.setup(16, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(17, 0)
 
 
-# global variabelen
+# globale variabelen en alsook de rotation variabele zodat ik deze meerdere keren kan gebruiken.
 global is_triggered
 global trap_status
 global alarm_count
@@ -57,59 +57,64 @@ rotation = [
                 ]
 
 
+#als eerste knop maken we de resetknop aan.
 def resetknop():
     global is_triggered
 
-    # Set up GPIO for the button and relay
+    # Set up GPIO voor de resetknop dit is pin12 en de relay pin 26 want deze moet ook uitgaan indien ik op de knop druk.
     button_pin = 12  
     relay_pin = 26  
     GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(relay_pin, GPIO.OUT)
 
+#hier staat dat als de knop is ingedrukt het relay lichtje moet stoppen met branden.
     while True:
         button_state = GPIO.input(button_pin)
         if button_state == GPIO.LOW:
             is_triggered = False
-            GPIO.output(26,1)  # Turn off the relay
+            GPIO.output(26,1)  # om de relay uit te zetten.
             time.sleep(0.1)
 
-        time.sleep(0.2)  # Add a small delay to debounce the button
+        time.sleep(0.2)  # kleine delay toevoegen aan de knop. 
     
+    
+# nu komt de triggerknop, deze moet de val laten afgaan, dus de motor laten draaien en het lampje laten branden.    
 def triggerknop():
     global is_triggered
     global alarm_count
     global rotation
     
-    # Setup the GPIO for the button and relay
+    # Setup the GPIO voor de knop en de relais de knop is pin 16 en de relais weeral pin 26
     button_pin = 16
     relay_pin = 26 #lampje
-    motor_pins = [22, 27, 5, 25] #motor
+    motor_pins = [22, 27, 5, 25] #de gebruikte pinnen voor de motor.
     GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     GPIO.setup(relay_pin, GPIO.OUT)
     for pin in motor_pins:
         GPIO.setup(pin, GPIO.OUT)
     
+# hier ook weer de knop wordt ingedrukt en de acties vinden plaats, nu wordt de rotatie uitgevoerd die onder variabele staan en wordt het relais lampje aangezet.    
     while True:
         button_state = GPIO.input(button_pin)
         if button_state == GPIO.LOW:
             is_triggered = True
-            GPIO.output(26,0)  # Turn on the relay
+            GPIO.output(26,0)  # zet de relais aan.
             time.sleep(0.1)
             
-            # Rotate the motor
+            # draai de motor.
             for _ in range(80):
                 for halfstep in range(8):
                     for pin in range(4):
                         GPIO.output(motor_pins[pin], rotation[halfstep][pin])
                     time.sleep(0.001)
             
-            time.sleep(1)  # Adjust the delay according to your requirements
+            time.sleep(1)  # deze functie zodat je dit niet kan blijven indrukken zonder problemen, zodat er tijd tussen zit.
         
-        time.sleep(0.2)
+        time.sleep(0.2)  # kleine delay toevoegen aan de knop.
 
 
     
-    
+# over naar de sensor. ter info mijn sensor zit aan de zijkant en de afstand van de zijkant tot de andere zijkant is 12cm. dus als er een muis in zit is de afstand zeker kleiner dan 6cm
 def sensor():
     global is_triggered
     global alarm_count
@@ -120,7 +125,7 @@ def sensor():
         GPIO.output(17,1)
         time.sleep(0.0001)
         GPIO.output(17,0)
-
+#zolang de input van 18 dus de sensor 0 is gebeurt er niks.
         while (GPIO.input(18) == 0):
             pass
         signal_high = time.time()
@@ -130,7 +135,7 @@ def sensor():
         signal_low = time.time()
 
         timepassed = signal_low - signal_high
-
+#om de afstand van de sensor te meten
         distance_sensor = round(timepassed * 17000)
         print("Distance: ", distance_sensor," cm")
 
@@ -142,19 +147,19 @@ def sensor():
             trap_status = "Triggered"
             alarm_count += 1
             is_triggered = True
-
+#zolang de afstand niet kleiner is dan 10cm zal de val op armed blijven staan. binnen de sensor functie.
         elif distance_sensor <= 10:
             trap_status = "Armed"
 
         else:
-            #Als de afstand van de sensor weer hoog is wordt de val gereset
+            #Als de afstand van de sensor weer hoog is, is de val terug in "armed" mode
             is_triggered = False
             trap_status = "Armed"
 
 
         time.sleep(2)
 
-
+# nu gaan we de lcd maken.
 def lcd():
     spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
 
@@ -168,7 +173,7 @@ def lcd():
     display.invert = True
 
 
-#  Clear the display.  Always call show after changing pixels to make the display update visible!
+#  clear het lcd scherm van vorige configuraties.  altijd call show oproepen om de display duidelijk te laten blijken.
     display.fill(0)
     display.show()
     current_time = datetime.datetime.now()
@@ -181,7 +186,7 @@ def lcd():
         draw = ImageDraw.Draw(image)
 
         draw.rectangle((0, 0, display.width, display.height), outline=255, fill=255)
-
+# hier voeg je de tijd toe en hieronder de status van de val en de counter van de triggered vallen.
         now = datetime.datetime.now()
         current_time = now.strftime("%H:%M:%S")
         text = "tijd: " + str(current_time)
@@ -195,13 +200,14 @@ def lcd():
         display.show()
         
 
-        #ubeac
+        #ubeac hieronder wordt de ubeac geprogrammeerd.
         if trap_status == "Triggered":
             trap_ubeac = 100
         else:
             trap_ubeac = 0
+                #deze vorige commando's zijn omdat je geen tekst naar ubeac kunt sturen, dus doe ik het zo, als de trap getriggered is, geeft die een impuls van count 100 anders blijft de count minder dan 100 en is de val dus niet afgegaan.
                 
-            
+            #hier wordt de data meegegeven voor mijn ubeac
         data = {
             "id": uid,
             "sensors" : [{
@@ -215,7 +221,7 @@ def lcd():
         print("trap status :", trap_status, "\nalarm count", alarm_count)
         time.sleep(1)
 
-
+# hieronder wordt de motordraai weergegeven.
 def motordraai():
     while True:
         if is_triggered:
@@ -240,13 +246,13 @@ def motordraai():
                             GPIO.output(control_pins[pin], halfstep_seq[halfstep][pin])
                         time.sleep(0.001)
         else:
-            # Stop the motor by turning off all control pins
+            # Stop de motor door alle control pins uit te zetten.
             control_pins = [22,27,5,25]
             for pin in control_pins:
                 GPIO.output(pin, 0)
 
 
-
+#hieronder gebruik gemaakt van multithreading.
 thread1 = threading.Thread(target=sensor)
 thread2 = threading.Thread(target=lcd)
 thread3 = threading.Thread(target=resetknop)
